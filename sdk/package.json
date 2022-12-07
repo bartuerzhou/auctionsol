@@ -1,0 +1,6 @@
+{
+    "type": "module",
+    "dependencies": {
+        "web3": "^1.8.1"
+    }
+}
