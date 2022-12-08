@@ -493,12 +493,14 @@ contract Auction is Ownable {
 
     mapping(uint => AuctionItem) public auctions;
     mapping(address => uint[]) public sellerAuctions;
-    mapping(address => mapping(uint => uint)) public balances; //who - > number of vote -> balance
+    mapping(address => mapping(uint => uint)) public balances;
 
+    /* test interface purpose , TODO:remove */
     function add(uint a, uint b) public pure returns (uint) {
         return a + b;
     }
 
+    /* test interface purpose , TODO:remove */
     function noop() external pure returns (uint) {
         return 0;
     }
