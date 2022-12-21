@@ -477,30 +477,34 @@ contract Auction is Ownable {
 
     constructor() {}
 
+    /*
+      settle down cases:
+      a) time out and biding
+      b) time out and reclaim
+      c) biding hit max, done immediately
+    */
     struct AuctionItem {
         address seller;
         address nftAddr;
         uint min;
         uint max;
-        uint id;
+        uint id /* nft token id */;
         uint amount;
-        uint time;
+        uint time /* auction time out */;
         uint bestBid;
         address bestBidAddr;
-        bool finished;
-        bool done;
+        bool finished /* settle down */;
     }
 
     mapping(uint => AuctionItem) public auctions;
     mapping(address => uint[]) public sellerAuctions;
-    mapping(address => mapping(uint => uint)) public balances;
 
-    /* test interface purpose , TODO:remove */
+    /* TODO:remove, test interface purpose */
     function add(uint a, uint b) public pure returns (uint) {
         return a + b;
     }
 
-    /* test interface purpose , TODO:remove */
+    /* TODO:remove test interface purpose */
     function noop() external pure returns (uint) {
         return 0;
     }
@@ -512,14 +516,14 @@ contract Auction is Ownable {
         uint min,
         uint max,
         uint time
-    ) external payable {
+    ) external payable returns (uint) {
         require(msg.sender != address(0));
         if (max == 0) {
             max = 9999999999 ether;
         }
         require(min > 0 && max > min && time > 0, "incorrect settings");
         nft = IERC1155(_nftAddr);
-        nft.safeTransferFrom(msg.sender, address(this), id, amount, "");
+        /* nft.safeTransferFrom(msg.sender, address(this), id, amount, ""); */
         auctions[aucNumber] = AuctionItem(
             msg.sender,
             _nftAddr,
@@ -530,14 +534,14 @@ contract Auction is Ownable {
             block.timestamp + time,
             0,
             address(0),
-            false,
             false
         );
         sellerAuctions[msg.sender].push(aucNumber);
         aucNumber++;
+        return aucNumber;
     }
 
-    function bid(uint number, uint price) external payable {
+    function bidAuction(uint number, uint price) external payable {
         if (
             block.timestamp > auctions[number].time &&
             !auctions[number].finished
@@ -552,17 +556,21 @@ contract Auction is Ownable {
             "incorrect pay"
         );
         require(block.timestamp < auctions[number].time);
-        require(!auctions[number].finished, "biding is finished");
+        require(!auctions[number].finished, "auction is finished");
+
+        /* TODO: setup bug, refund ether when bestBid replaced */
+        payable(auctions[number].bestBidAddr).transfer(
+            auctions[number].bestBid
+        );
 
         if (price >= auctions[number].max) {
-            finishAuctionMax(number, msg.value);
             auctions[number].bestBid = price;
             auctions[number].bestBidAddr = msg.sender;
+            finishAuction(number);
         } else {
             auctions[number].bestBid = price;
             auctions[number].bestBidAddr = msg.sender;
         }
-        balances[msg.sender][number] += price;
     }
 
     function finishAuction(uint number) internal {
@@ -578,37 +586,19 @@ contract Auction is Ownable {
         payable(auctions[number].seller).transfer(auctions[number].bestBid);
     }
 
-    function finishAuctionMax(uint number, uint price) internal {
-        auctions[number].finished = true;
-        nft = IERC1155(auctions[number].nftAddr);
-        nft.safeTransferFrom(
-            address(this),
-            msg.sender,
-            auctions[number].id,
-            auctions[number].amount,
-            ""
-        );
-        payable(auctions[number].seller).transfer(price);
-    }
-
-    function backNFT(uint number) external {
-        if (
-            block.timestamp > auctions[number].time &&
-            !auctions[number].finished
-        ) {
-            auctions[number].finished = true;
-        }
-        require(auctions[number].seller == msg.sender, "not an owner");
-        require(!auctions[number].done, "already claimed");
+    function doneAuction(uint number) external {
         require(
             block.timestamp > auctions[number].time,
-            "Voting is not finished"
+            "auction is not finished"
         );
+        require(!auctions[number].finished, "already settle down");
+        /* TODO: set up bug, reclaim seller check */
+        require(auctions[number].seller == msg.sender, "not NFT owner");
         if (auctions[number].bestBid > 0) {
-            auctions[number].done = true;
+            /* trigger settle down */
             finishAuction(number);
         } else {
-            auctions[number].done = true;
+            /* TODO: set up bug, nobody bid, trigger NFT reclaim */
             nft.safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -617,24 +607,6 @@ contract Auction is Ownable {
                 ""
             );
         }
-    }
-
-    function backEther(uint number) external {
-        if (
-            block.timestamp > auctions[number].time &&
-            !auctions[number].finished
-        ) {
-            finishAuction(number);
-        }
-        require(balances[msg.sender][number] > 0, "You didn't bid");
-        require(block.timestamp > auctions[number].time, "Still open");
-        require(
-            auctions[number].bestBidAddr != msg.sender,
-            "You are winner! Please check NFT on your account!"
-        );
-        uint balance = balances[msg.sender][number];
-        balances[msg.sender][number] = 0;
-        payable(msg.sender).transfer(balance);
     }
 
     function onERC1155Received(
