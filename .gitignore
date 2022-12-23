@@ -2,3 +2,4 @@
 /sdk/node_modules
 /sdk/*.abi
 /test/@openzeppelin
+/contracts/@openzeppelin

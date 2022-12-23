@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MyToken is ERC1155, Ownable {
-    address private owner_addr;
+    address public owner_addr;
 
     uint256 public constant UNIQ_A = 1;
     uint256 public constant UNIQ_B = 2;
