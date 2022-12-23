@@ -478,11 +478,12 @@ contract Auction is Ownable {
     constructor() {}
 
     /*
-      settle down cases:
+      TODO:business logic graph, settle down cases
       a) time out and biding
       b) time out and reclaim
       c) biding hit max, done immediately
     */
+
     struct AuctionItem {
         address seller;
         address nftAddr;
@@ -516,14 +517,14 @@ contract Auction is Ownable {
         uint min,
         uint max,
         uint time
-    ) external payable returns (uint) {
+    ) public payable {
         require(msg.sender != address(0));
         if (max == 0) {
             max = 9999999999 ether;
         }
         require(min > 0 && max > min && time > 0, "incorrect settings");
         nft = IERC1155(_nftAddr);
-        /* nft.safeTransferFrom(msg.sender, address(this), id, amount, ""); */
+        nft.safeTransferFrom(msg.sender, address(this), id, amount, "");
         auctions[aucNumber] = AuctionItem(
             msg.sender,
             _nftAddr,
@@ -538,6 +539,17 @@ contract Auction is Ownable {
         );
         sellerAuctions[msg.sender].push(aucNumber);
         aucNumber++;
+    }
+
+    function createAuction_t(
+        address _nftAddr,
+        uint id,
+        uint amount,
+        uint min,
+        uint max,
+        uint time
+    ) external returns (uint) {
+        createAuction(_nftAddr, id, amount, min, max, time);
         return aucNumber;
     }
 
@@ -592,13 +604,13 @@ contract Auction is Ownable {
             "auction is not finished"
         );
         require(!auctions[number].finished, "already settle down");
-        /* TODO: set up bug, reclaim seller check */
+        /* TODO: setup bug, reclaim seller check */
         require(auctions[number].seller == msg.sender, "not NFT owner");
         if (auctions[number].bestBid > 0) {
             /* trigger settle down */
             finishAuction(number);
         } else {
-            /* TODO: set up bug, nobody bid, trigger NFT reclaim */
+            /* TODO: setup bug, nobody bid, trigger NFT reclaim */
             nft.safeTransferFrom(
                 address(this),
                 msg.sender,
