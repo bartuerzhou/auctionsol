@@ -19,32 +19,20 @@ contract NFTToken is ERC1155, Ownable {
     address public addr;
 
     uint256 public constant total = 8;
-    uint256 public constant NFT_A = 1;
-    uint256 public constant NFT_B = 2;
-    uint256 public constant NFT_C = 3;
-    uint256 public constant NFT_D = 4;
-    uint256 public constant NFT_E = 5;
-    uint256 public constant NFT_F = 6;
-    uint256 public constant NFT_G = 7;
-    uint256 public constant NFT_H = 8;
 
     constructor()
         ERC1155("http://bazhou.blob.core.windows.net/NFToken/{id}.json")
         onlyOwner
     {
-        addr = msg.sender;
+        addr = address(this);
     }
 
     function mintBatch(address[] memory owners) public {
-        require(owners.length == total, "owner length should be 8");
-        _mint(owners[0], NFT_A, 1, "");
-        _mint(owners[1], NFT_B, 1, "");
-        _mint(owners[2], NFT_C, 1, "");
-        _mint(owners[3], NFT_D, 1, "");
-        _mint(owners[4], NFT_E, 1, "");
-        _mint(owners[5], NFT_F, 1, "");
-        _mint(owners[6], NFT_G, 1, "");
-        _mint(owners[7], NFT_H, 1, "");
+        require(owners.length == total, "length");
+        for (uint256 i = 0; i < owners.length; i++) {
+            _mint(owners[i], i + 1, 1, "");
+            _setApprovalForAll(owners[i], msg.sender, true);
+        }
     }
 }
 
@@ -70,6 +58,17 @@ contract Auction is Ownable {
         tok.mintBatch(players);
         acn.mintBatch(players, 9999999);
         nft = IERC1155(address(tok));
+        for (uint256 i = 0; i < players.length; i++) {
+            createAuction(
+                players[i],
+                address(tok),
+                i + 1,
+                1,
+                9999,
+                8888888,
+                block.timestamp + 1200
+            );
+        }
     }
 
     /*
@@ -118,7 +117,7 @@ contract Auction is Ownable {
         if (max == 0) {
             max = 9999999999 ether;
         }
-        require(min > 0 && max > min && time > 0, "incorrect settings");
+        require(min > 0 && max > min && time > 0, "setting");
         nft = IERC1155(_nftAddr);
         nft.safeTransferFrom(seller, address(this), id, amount, "");
         auctions[aucNumber] = AuctionItem(
@@ -149,10 +148,10 @@ contract Auction is Ownable {
             msg.value >= price &&
                 msg.value >= auctions[number].min &&
                 msg.value >= auctions[number].bestBid,
-            "incorrect pay"
+            "pay"
         );
         require(block.timestamp < auctions[number].time);
-        require(!auctions[number].finished, "auction is finished");
+        require(!auctions[number].finished, "finished");
 
         /* TODO: setup bug, refund ether when bestBid replaced */
         payable(auctions[number].bestBidAddr).transfer(
@@ -183,13 +182,10 @@ contract Auction is Ownable {
     }
 
     function doneAuction(uint number) external {
-        require(
-            block.timestamp > auctions[number].time,
-            "auction is not finished"
-        );
-        require(!auctions[number].finished, "already settle down");
+        require(block.timestamp > auctions[number].time, "finished");
+        require(!auctions[number].finished, "settled");
         /* TODO: setup bug, reclaim seller check */
-        require(auctions[number].seller == msg.sender, "not NFT owner");
+        require(auctions[number].seller == msg.sender, "owner");
         if (auctions[number].bestBid > 0) {
             /* trigger settle down */
             finishAuction(number);
@@ -213,11 +209,11 @@ contract Auction is Ownable {
         uint256 value,
         bytes calldata data
     ) external pure returns (bytes4) {
-        require(operator != address(0), "operator address should not be zero");
-        require(from != address(0), "from address should not be zero");
-        require(id >= 0, "id should large than zero");
-        require(value == 1, "value should be one");
-        require(data.length >= 0, "data can be empty");
+        require(operator != address(0), "operator");
+        require(from != address(0), "from");
+        require(id >= 0, "id");
+        require(value == 1, "value");
+        require(data.length >= 0, "data");
         return
             bytes4(
                 keccak256(
