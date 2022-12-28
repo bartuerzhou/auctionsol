@@ -16,7 +16,7 @@ contract BidToken is ERC20 {
 }
 
 contract NFTToken is ERC1155, Ownable {
-    address public addr;
+    address public selfaddr;
 
     uint256 public constant total = 8;
 
@@ -24,7 +24,7 @@ contract NFTToken is ERC1155, Ownable {
         ERC1155("http://bazhou.blob.core.windows.net/NFToken/{id}.json")
         onlyOwner
     {
-        addr = address(this);
+        selfaddr = address(this);
     }
 
     function mintBatch(address[] memory owners) public {
@@ -49,7 +49,7 @@ contract Auction is Ownable {
         0x0aaC824304cD2F8E56a926b908142a234a198969,
         0x16127E492D5B4Af93919C93a226f81fC923b0E90
     ];
-    BidToken private acn;
+    BidToken public acn;
     NFTToken private tok;
 
     constructor() {
@@ -61,12 +61,12 @@ contract Auction is Ownable {
         for (uint256 i = 0; i < players.length; i++) {
             createAuction(
                 players[i],
-                address(tok),
+                tok.selfaddr(),
                 i + 1,
                 1,
-                9999,
+                999,
                 8888888,
-                block.timestamp + 1200
+                1200
             );
         }
     }
@@ -166,6 +166,49 @@ contract Auction is Ownable {
             auctions[number].bestBid = price;
             auctions[number].bestBidAddr = msg.sender;
         }
+    }
+
+    function bidAuction_t(
+        uint number,
+        uint price
+    ) external payable returns (uint) {
+        if (
+            block.timestamp > auctions[number].time &&
+            !auctions[number].finished
+        ) {
+            finishAuction(number);
+        }
+
+        require(
+            msg.value >= price &&
+                msg.value >= auctions[number].min &&
+                msg.value >= auctions[number].bestBid,
+            "pay"
+        );
+        require(block.timestamp < auctions[number].time, "time");
+        require(!auctions[number].finished, "finished");
+
+        /* TODO: setup bug, refund ether when bestBid replaced */
+        payable(auctions[number].bestBidAddr).transfer(
+            auctions[number].bestBid
+        );
+
+        if (price >= auctions[number].max) {
+            auctions[number].bestBid = price;
+            auctions[number].bestBidAddr = msg.sender;
+            finishAuction(number);
+        } else {
+            auctions[number].bestBid = price;
+            auctions[number].bestBidAddr = msg.sender;
+        }
+        return 878;
+    }
+
+    function test() public payable returns (bool) {
+        (bool ret, ) = this.players(1).call{value: msg.value}(
+            abi.encode("bidAuction_t", 1, 99)
+        );
+        return ret;
     }
 
     function finishAuction(uint number) internal {

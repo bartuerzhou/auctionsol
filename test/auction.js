@@ -21,5 +21,13 @@ contract("Auction", function ( /* accounts */ ) {
         const add_res = await AuctionInstance.add.call(17, 23);
         assert.equal(add_res, 40);
     });
+    it("should call bid", async function () {
+        const AuctionInstance = await Auction.deployed();
+        const bid_res = await AuctionInstance.bidAuction_t.call(1, 999, {
+            value: "999",
+            from: AuctionInstance.players[1]
+        });
+        assert.equal(bid_res, 878);
+    });
 
 });
