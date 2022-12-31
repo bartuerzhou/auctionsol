@@ -5,10 +5,8 @@ const Auction = artifacts.require("Auction");
  * Ethereum client
  * See docs: https://www.trufflesuite.com/docs/truffle/testing/writing-tests-in-javascript
  */
-contract("Auction", function ( /* accounts */ ) {
-
+contract("Auction", function (accounts) {
     it("should assert true", async function () {
-        await Auction.deployed();
         return assert.isTrue(true);
     });
     it("should noop return 0", async function () {
@@ -21,13 +19,25 @@ contract("Auction", function ( /* accounts */ ) {
         const add_res = await AuctionInstance.add.call(17, 23);
         assert.equal(add_res, 40);
     });
-    it("should call bid", async function () {
+    it("should bid be payable", async function () {
         const AuctionInstance = await Auction.deployed();
-        const bid_res = await AuctionInstance.bidAuction_t.call(1, 999, {
-            value: "999",
-            from: AuctionInstance.players[1]
+        const bider = accounts[1];
+        const receive_ether_addr = AuctionInstance.address;
+        const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
+        const bider_before = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const auction_before = await AuctionInstance.getBalance.call();
+        const bid = 1234;
+        const res = await AuctionInstance.bidAuction(1, {
+            value: bid,
+            from: bider
         });
-        assert.equal(bid_res, 878);
+        const receipt_to = web3.utils.toChecksumAddress(res.receipt.to);
+        const gas_used = web3.utils.toBN(res.receipt.cumulativeGasUsed);
+        const bider_after = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const auction_after = await AuctionInstance.getBalance.call();
+        assert.equal(bider_before.sub(bider_after).sub(gas_used.mul(gas_price)).toNumber(), bid);
+        assert.equal(receipt_to, receive_ether_addr);
+        assert.equal(auction_after - auction_before, bid);
     });
 
 });

@@ -1,19 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-contract BidToken is ERC20 {
-    constructor() ERC20("Aucoin", "ACN") {}
-
-    function mintBatch(address[] memory addrs, uint256 supply) public {
-        for (uint256 i = 0; i < addrs.length; i++) {
-            _mint(addrs[i], supply);
-        }
-    }
-}
 
 contract NFTToken is ERC1155, Ownable {
     address public selfaddr;
@@ -37,6 +26,7 @@ contract NFTToken is ERC1155, Ownable {
 }
 
 contract Auction is Ownable {
+    address payable receive_ether_addr;
     IERC1155 public nft;
     uint public aucNumber = 1;
     address[] public players = [
@@ -49,14 +39,12 @@ contract Auction is Ownable {
         0x0aaC824304cD2F8E56a926b908142a234a198969,
         0x16127E492D5B4Af93919C93a226f81fC923b0E90
     ];
-    BidToken public acn;
     NFTToken private tok;
 
     constructor() {
-        acn = new BidToken();
+        receive_ether_addr = payable(address(this));
         tok = new NFTToken();
         tok.mintBatch(players);
-        acn.mintBatch(players, 9999999);
         nft = IERC1155(address(tok));
         for (uint256 i = 0; i < players.length; i++) {
             createAuction(
@@ -65,7 +53,7 @@ contract Auction is Ownable {
                 i + 1,
                 1,
                 999,
-                8888888,
+                9999999,
                 1200
             );
         }
@@ -115,7 +103,7 @@ contract Auction is Ownable {
     ) public payable {
         require(msg.sender != address(0));
         if (max == 0) {
-            max = 9999999999 ether;
+            max = 9999999999;
         }
         require(min > 0 && max > min && time > 0, "setting");
         nft = IERC1155(_nftAddr);
@@ -136,7 +124,21 @@ contract Auction is Ownable {
         aucNumber++;
     }
 
-    function bidAuction(uint number, uint price) external payable {
+    function transfer_ether(address to) public payable {
+        payable(to).transfer(msg.value);
+    }
+
+    function getBalance() external view returns (uint) {
+        return receive_ether_addr.balance;
+    }
+
+    event Received(address, uint);
+
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+
+    function bidAuction(uint number) external payable {
         if (
             block.timestamp > auctions[number].time &&
             !auctions[number].finished
@@ -144,71 +146,24 @@ contract Auction is Ownable {
             finishAuction(number);
         }
 
-        require(
-            msg.value >= price &&
-                msg.value >= auctions[number].min &&
-                msg.value >= auctions[number].bestBid,
-            "pay"
-        );
+        /* TODO: setup bug, only one and first bestBid */
+        require(!auctions[number].finished, "finished");
         require(block.timestamp < auctions[number].time);
-        require(!auctions[number].finished, "finished");
+        require(msg.value > auctions[number].bestBid, "pay");
 
-        /* TODO: setup bug, refund ether when bestBid replaced */
-        payable(auctions[number].bestBidAddr).transfer(
-            auctions[number].bestBid
-        );
-
-        if (price >= auctions[number].max) {
-            auctions[number].bestBid = price;
+        receive_ether_addr.transfer(msg.value);
+        if (msg.value >= auctions[number].max) {
+            auctions[number].bestBid = msg.value;
             auctions[number].bestBidAddr = msg.sender;
             finishAuction(number);
         } else {
-            auctions[number].bestBid = price;
+            /* TODO: setup bug, refund ether when bestBid replaced */
+            this.transfer_ether{value: auctions[number].bestBid}(
+                auctions[number].bestBidAddr
+            );
+            auctions[number].bestBid = msg.value;
             auctions[number].bestBidAddr = msg.sender;
         }
-    }
-
-    function bidAuction_t(
-        uint number,
-        uint price
-    ) external payable returns (uint) {
-        if (
-            block.timestamp > auctions[number].time &&
-            !auctions[number].finished
-        ) {
-            finishAuction(number);
-        }
-
-        require(
-            msg.value >= price &&
-                msg.value >= auctions[number].min &&
-                msg.value >= auctions[number].bestBid,
-            "pay"
-        );
-        require(block.timestamp < auctions[number].time, "time");
-        require(!auctions[number].finished, "finished");
-
-        /* TODO: setup bug, refund ether when bestBid replaced */
-        payable(auctions[number].bestBidAddr).transfer(
-            auctions[number].bestBid
-        );
-
-        if (price >= auctions[number].max) {
-            auctions[number].bestBid = price;
-            auctions[number].bestBidAddr = msg.sender;
-            finishAuction(number);
-        } else {
-            auctions[number].bestBid = price;
-            auctions[number].bestBidAddr = msg.sender;
-        }
-        return 878;
-    }
-
-    function test() public payable returns (bool) {
-        (bool ret, ) = this.players(1).call{value: msg.value}(
-            abi.encode("bidAuction_t", 1, 99)
-        );
-        return ret;
     }
 
     function finishAuction(uint number) internal {
@@ -221,7 +176,9 @@ contract Auction is Ownable {
             auctions[number].amount,
             ""
         );
-        payable(auctions[number].seller).transfer(auctions[number].bestBid);
+        this.transfer_ether{value: auctions[number].bestBid}(
+            auctions[number].seller
+        );
     }
 
     function doneAuction(uint number) external {
