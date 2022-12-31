@@ -82,16 +82,6 @@ contract Auction is Ownable {
     mapping(uint => AuctionItem) public auctions;
     mapping(address => uint[]) public sellerAuctions;
 
-    /* TODO:remove, test interface purpose */
-    function add(uint a, uint b) public pure returns (uint) {
-        return a + b;
-    }
-
-    /* TODO:remove test interface purpose */
-    function noop() external pure returns (uint) {
-        return 0;
-    }
-
     function createAuction(
         address seller,
         address _nftAddr,

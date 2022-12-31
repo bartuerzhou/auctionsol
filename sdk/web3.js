@@ -16,12 +16,7 @@ const get_abi = async(json_file) => {
 async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
-    const add_res = await Contract.methods.add(2, 4).call();
-    console.log(`add result : ${add_res}`);
-    const noop_res = await Contract.methods.noop().call();
-    console.log(`noop result : ${noop_res}`);
     const accounts = await web3.eth.getAccounts();
-
     const bid_res = await Contract.methods.bidAuction(4).send({
         value: 1013,
         from: accounts[1]
