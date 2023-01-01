@@ -25,30 +25,22 @@ contract Auction is Ownable {
     uint public aucNumber = 1;
     NFTToken private tok;
 
-    function initMarket(
-        address holder,
-        uint total,
-        uint min,
-        uint max,
-        uint timeout
-    ) public {
-        tok = new NFTToken();
-        tok.mintBatch(holder, total);
-        nft = IERC1155(address(tok));
-        for (uint256 i = 0; i < total; i++) {
-            createAuction(holder, tok.selfaddr(), i + 1, 1, min, max, timeout);
-        }
-    }
-
     constructor() {
         receive_ether_addr = payable(address(this));
-        initMarket(
-            0xF4e5B0afC2C521c47d39Efa43d1c2e93cB6C21Da,
-            4,
-            999,
-            9999999,
-            1200
-        );
+        tok = new NFTToken();
+        tok.mintBatch(msg.sender, 8);
+        nft = IERC1155(address(tok));
+        for (uint256 i = 0; i < 8; i++) {
+            createAuction(
+                msg.sender,
+                tok.selfaddr(),
+                i + 1,
+                1,
+                999,
+                9999999,
+                1200
+            );
+        }
     }
 
     /*

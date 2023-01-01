@@ -17,11 +17,8 @@ async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
-    console.log(accounts);
-    // const total = await Contract.methods.initMarket(accounts, 999, 9999999, 1200).call();
-    // console.log(`total : ${total}`);
     const bid_res = await Contract.methods.bidAuction(1).send({
-        value: 1013,
+        value: 1014,
         from: accounts[1]
     });
     console.log(`to: ${bid_res.to}`);
