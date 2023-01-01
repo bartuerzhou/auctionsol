@@ -9,6 +9,7 @@ contract("Auction", function (accounts) {
     it("should assert true", async function () {
         return assert.isTrue(true);
     });
+
     it("should bid be payable", async function () {
         const AuctionInstance = await Auction.deployed();
         const bider = accounts[1];
@@ -32,6 +33,7 @@ contract("Auction", function (accounts) {
         assert.equal(auction_after - auction_before, bid, "contract balance");
         assert.equal(receipt_to, receive_ether_addr, "contract address on receipt");
     });
+
     it("should secound highest bid refund", async function () {
         const AuctionInstance = await Auction.deployed();
         const bider_2nd = accounts[2];
@@ -65,6 +67,7 @@ contract("Auction", function (accounts) {
         assert.equal(auction_after - auction_before, bid_1, "contract balance");
         assert.equal(net_2nd.toNumber(), 0, "second highest refund");
     });
+
     it("should reject below minimum bid", async function () {
         const AuctionInstance = await Auction.deployed();
         const bider = accounts[0];
@@ -88,6 +91,7 @@ contract("Auction", function (accounts) {
             assert.equal(auction_after - auction_before, 0, "contract balance untouched");
         }
     });
+
     it("should reject not best latest bid", async function () {
         const AuctionInstance = await Auction.deployed();
         const bider = accounts[4];
@@ -111,6 +115,7 @@ contract("Auction", function (accounts) {
             assert.equal(auction_after - auction_before, 0, "contract balance untouched");
         }
     });
+
     it("should settle down immediately on maximum bid", async function () {
         const AuctionInstance = await Auction.deployed();
         const bider = accounts[1];
@@ -142,6 +147,7 @@ contract("Auction", function (accounts) {
         assert.equal(net.toNumber(), bid, "bider balance");
         assert.equal(auction_after - auction_before, 0, "contract balance");
     });
+
     it("should settle down on highest bid when timeout", async function () {
         const AuctionInstance = await Auction.deployed();
         const holder = accounts[0];
@@ -204,6 +210,7 @@ contract("Auction", function (accounts) {
         assert.equal(net_max.toNumber(), 0, "max after timeout refund");
         assert.equal(earn.toNumber(), bid_1, "holder balance");
     });
+
     it("should reclaim", async function () {
         const AuctionInstance = await Auction.deployed();
         const holder = accounts[0];
@@ -228,9 +235,72 @@ contract("Auction", function (accounts) {
     });
 
     it("should settle down highest bid when relaim", async function () {
-        return;
+        const AuctionInstance = await Auction.deployed();
+        const holder = accounts[0];
+        const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
+        const bider = accounts[7];
+        const holder_before = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const bider_before = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const auction_before = await AuctionInstance.getBalance.call();
+        const bid = 1234;
+        const res = await AuctionInstance.bidAuction(6, {
+            value: bid,
+            from: bider
+        });
+        const timeout_operator = accounts[6];
+        await AuctionInstance.removeTimeout(6, {
+            value: 0,
+            from: timeout_operator
+        });
+        const timeout = await AuctionInstance.checkTimeout.call(6);
+        assert(timeout, "timeout set to 0");
+        const res_done = await AuctionInstance.doneAuction(6);
+        const gas_used_done = web3.utils.toBN(res_done.receipt.cumulativeGasUsed);
+        const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const bider_after = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const auction_after = await AuctionInstance.getBalance.call();
+        const gas_done = gas_used_done.mul(gas_price);
+        const cost_done = holder_before.sub(holder_after);
+        const net_done = cost_done.sub(gas_done);
+        const gas_used = web3.utils.toBN(res.receipt.cumulativeGasUsed);
+        const cost = bider_before.sub(bider_after);
+        const gas = gas_used.mul(gas_price);
+        const net = cost.sub(gas);
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(6, bider);
+        const isReclaimed = await AuctionInstance.queryNFTOwner.call(6, holder);
+        assert.equal(net.toNumber(), bid, "bider balance");
+        assert.equal(net_done.toNumber(), -bid, "holder balance");
+        assert.equal(auction_after - auction_before, 0, "contract balance");
+        assert(!isReclaimed, "not reclaim");
+        assert(isSettleDown, "settle down");
     });
+
+    it("should reject reclaim on finished", async function () {
+        const AuctionInstance = await Auction.deployed();
+        await AuctionInstance.removeTimeout(4, {
+            value: 0
+        });
+        const timeout = await AuctionInstance.checkTimeout.call(4);
+        assert(timeout, "timeout set to 0");
+        try {
+            const res_done = await AuctionInstance.doneAuction(4);
+            throw res_done;
+        } catch (e) {
+            const expect_err = "revert finished";
+            const stack_head = e.data.stack.split('\n')[0].split(": ")[2];
+            assert.equal(stack_head, expect_err, "throw finished revert message");
+        };
+    });
+
     it("should reject reclaim before timeout", async function () {
-        assert(true, "not covered");
+        const AuctionInstance = await Auction.deployed();
+        try {
+            const res_done = await AuctionInstance.doneAuction(7);
+            throw res_done;
+        } catch (e) {
+            const expect_err = "revert timeout";
+            const stack_head = e.data.stack.split('\n')[0].split(": ")[2];
+            assert.equal(stack_head, expect_err, "throw timeout revert message");
+        };
     });
 });

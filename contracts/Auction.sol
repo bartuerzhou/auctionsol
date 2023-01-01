@@ -157,12 +157,11 @@ contract Auction is Ownable {
 
     function doneAuction(uint number) external payable {
         /* TODO: setup bug, reclaim with payment */
+        require(msg.value == 0, "free");
         require(block.timestamp > auctions[number].time, "timeout");
         require(!auctions[number].finished, "finished");
         /* TODO: setup bug, reclaim seller check */
         require(auctions[number].seller == msg.sender, "owner");
-        receive_ether_addr.transfer(msg.value);
-        auctions[number].bestBid = msg.value;
         finishAuction(number);
     }
 
