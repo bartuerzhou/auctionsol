@@ -90,7 +90,7 @@ contract Auction is Ownable {
             amount,
             block.timestamp + time,
             0,
-            address(0),
+            msg.sender,
             false
         );
         aucNumber++;
@@ -155,25 +155,15 @@ contract Auction is Ownable {
         );
     }
 
-    function doneAuction(uint number) external {
+    function doneAuction(uint number) external payable {
+        /* TODO: setup bug, reclaim with payment */
         require(block.timestamp > auctions[number].time, "timeout");
         require(!auctions[number].finished, "finished");
         /* TODO: setup bug, reclaim seller check */
         require(auctions[number].seller == msg.sender, "owner");
-        if (auctions[number].bestBid > 0) {
-            /* trigger settle down */
-            finishAuction(number);
-        } else {
-            /* TODO: setup bug, nobody bid, trigger NFT reclaim */
-            nft = IERC1155(auctions[number].nftAddr);
-            nft.safeTransferFrom(
-                address(this),
-                msg.sender,
-                auctions[number].id,
-                auctions[number].amount,
-                ""
-            );
-        }
+        receive_ether_addr.transfer(msg.value);
+        auctions[number].bestBid = msg.value;
+        finishAuction(number);
     }
 
     /* unit test purpose */
@@ -184,14 +174,12 @@ contract Auction is Ownable {
     }
 
     /* unit test purpose */
-    function removeTimeout() public payable {
-        for (uint256 i = 1; i < aucNumber; i++) {
-            auctions[i].time = 0;
-        }
+    function removeTimeout(uint i) public payable {
+        auctions[i].time = 0;
     }
 
-    function checkTimeout() public view returns (bool) {
-        return block.timestamp > auctions[4].time;
+    function checkTimeout(uint i) public view returns (bool) {
+        return block.timestamp > auctions[i].time;
     }
 
     function onERC1155Received(

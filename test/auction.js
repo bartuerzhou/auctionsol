@@ -136,7 +136,7 @@ contract("Auction", function (accounts) {
         const net = cost.sub(gas);
         const isSettleDown = await AuctionInstance.queryNFTOwner.call(1, accounts[1]);
         const originalHolder = await AuctionInstance.queryNFTOwner.call(1, accounts[0]);
-        assert(isSettleDown, "NFT owner should be bider");
+        assert(isSettleDown, "NFT owner is bider");
         assert(!originalHolder, "NFT original holder lost holding");
         assert.equal(earn.toNumber(), bid, "holder balance");
         assert.equal(net.toNumber(), bid, "bider balance");
@@ -158,22 +158,22 @@ contract("Auction", function (accounts) {
         const bid_2 = 1000;
         const bid_1 = 1002;
         const bid_max = 9999999;
-        const res_2 = await AuctionInstance.bidAuction(4, {
+        const res_2 = await AuctionInstance.bidAuction(5, {
             value: bid_2,
             from: bider_2nd
         });
         const gas_used_2 = web3.utils.toBN(res_2.receipt.cumulativeGasUsed);
-        const res_1 = await AuctionInstance.bidAuction(4, {
+        const res_1 = await AuctionInstance.bidAuction(5, {
             value: bid_1,
             from: bider_1st
         });
-        await AuctionInstance.removeTimeout({
+        await AuctionInstance.removeTimeout(5, {
             value: 0,
             from: timeout_operator
         });
-        const timeout = await AuctionInstance.checkTimeout.call();
+        const timeout = await AuctionInstance.checkTimeout.call(5);
         assert(timeout, "timeout set to 0");
-        const res_3 = await AuctionInstance.bidAuction(4, {
+        const res_3 = await AuctionInstance.bidAuction(5, {
             value: bid_max,
             from: bider_max
         });
@@ -194,9 +194,9 @@ contract("Auction", function (accounts) {
         const cost_max = before_max.sub(after_max);
         const net_max = cost_max.sub(gas_max);
         const earn = holder_after.sub(holder_before);
-        const isSettleDown = await AuctionInstance.queryNFTOwner.call(4, bider_1st);
-        const originalHolder = await AuctionInstance.queryNFTOwner.call(4, holder);
-        assert(isSettleDown, "NFT owner should be bider");
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(5, bider_1st);
+        const originalHolder = await AuctionInstance.queryNFTOwner.call(5, holder);
+        assert(isSettleDown, "NFT owner is bider");
         assert(!originalHolder, "NFT original holder lost holding");
         assert.equal(net_1st.toNumber(), bid_1, "highest balance");
         assert.equal(net_2nd.toNumber(), 0, "second highest refund");
@@ -204,5 +204,33 @@ contract("Auction", function (accounts) {
         assert.equal(net_max.toNumber(), 0, "max after timeout refund");
         assert.equal(earn.toNumber(), bid_1, "holder balance");
     });
+    it("should reclaim", async function () {
+        const AuctionInstance = await Auction.deployed();
+        const holder = accounts[0];
+        const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
+        const timeout_operator = accounts[4];
+        await AuctionInstance.removeTimeout(4, {
+            value: 0,
+            from: timeout_operator
+        });
+        const timeout = await AuctionInstance.checkTimeout.call(4);
+        assert(timeout, "timeout set to 0");
+        const holder_before = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const res = await AuctionInstance.doneAuction(4);
+        const gas_used = web3.utils.toBN(res.receipt.cumulativeGasUsed);
+        const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const isReclaimed = await AuctionInstance.queryNFTOwner.call(4, holder);
+        const gas = gas_used.mul(gas_price);
+        const cost = holder_before.sub(holder_after);
+        const net = cost.sub(gas);
+        assert.equal(net.toNumber(), 0, "holder balance");
+        assert(isReclaimed, "holder reclaim");
+    });
 
+    it("should settle down highest bid when relaim", async function () {
+        return;
+    });
+    it("should reject reclaim before timeout", async function () {
+        assert(true, "not covered");
+    });
 });
