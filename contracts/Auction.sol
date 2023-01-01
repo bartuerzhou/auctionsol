@@ -115,27 +115,28 @@ contract Auction is Ownable {
             block.timestamp > auctions[number].time &&
             !auctions[number].finished
         ) {
-            finishAuction(number);
-        }
-
-        /* TODO: setup bug, only one and first bestBid */
-        require(msg.value > auctions[number].min, "min");
-        require(!auctions[number].finished, "finished");
-        require(block.timestamp < auctions[number].time, "timeout");
-        require(msg.value > auctions[number].bestBid, "pay");
-
-        receive_ether_addr.transfer(msg.value);
-        if (msg.value >= auctions[number].max) {
-            auctions[number].bestBid = msg.value;
-            auctions[number].bestBidAddr = msg.sender;
+            this.transfer_ether{value: msg.value}(msg.sender);
             finishAuction(number);
         } else {
-            /* TODO: setup bug, refund ether when bestBid replaced */
-            this.transfer_ether{value: auctions[number].bestBid}(
-                auctions[number].bestBidAddr
-            );
-            auctions[number].bestBid = msg.value;
-            auctions[number].bestBidAddr = msg.sender;
+            /* TODO: setup bug, only one and first bestBid */
+            require(msg.value > auctions[number].min, "min");
+            require(!auctions[number].finished, "finished");
+            require(block.timestamp < auctions[number].time, "timeout");
+            require(msg.value > auctions[number].bestBid, "pay");
+
+            receive_ether_addr.transfer(msg.value);
+            if (msg.value >= auctions[number].max) {
+                auctions[number].bestBid = msg.value;
+                auctions[number].bestBidAddr = msg.sender;
+                finishAuction(number);
+            } else {
+                /* TODO: setup bug, refund ether when bestBid replaced */
+                this.transfer_ether{value: auctions[number].bestBid}(
+                    auctions[number].bestBidAddr
+                );
+                auctions[number].bestBid = msg.value;
+                auctions[number].bestBidAddr = msg.sender;
+            }
         }
     }
 
@@ -175,10 +176,22 @@ contract Auction is Ownable {
         }
     }
 
+    /* unit test purpose */
     function queryNFTOwner(uint number, address owner) public returns (bool) {
         nft = IERC1155(auctions[number].nftAddr);
         uint r = nft.balanceOf(owner, number);
         return r > 0;
+    }
+
+    /* unit test purpose */
+    function removeTimeout() public payable {
+        for (uint256 i = 1; i < aucNumber; i++) {
+            auctions[i].time = 0;
+        }
+    }
+
+    function checkTimeout() public view returns (bool) {
+        return block.timestamp > auctions[4].time;
     }
 
     function onERC1155Received(

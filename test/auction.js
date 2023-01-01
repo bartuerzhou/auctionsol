@@ -142,5 +142,67 @@ contract("Auction", function (accounts) {
         assert.equal(net.toNumber(), bid, "bider balance");
         assert.equal(auction_after - auction_before, 0, "contract balance");
     });
+    it("should settle down on highest bid when timeout", async function () {
+        const AuctionInstance = await Auction.deployed();
+        const holder = accounts[0];
+        const bider_2nd = accounts[2];
+        const bider_1st = accounts[3];
+        const bider_max = accounts[4];
+        const timeout_operator = accounts[5];
+        const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
+        const before_1st = web3.utils.toBN(await web3.eth.getBalance(bider_1st));
+        const before_2nd = web3.utils.toBN(await web3.eth.getBalance(bider_2nd));
+        const before_max = web3.utils.toBN(await web3.eth.getBalance(bider_max));
+        const holder_before = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const auction_before = await AuctionInstance.getBalance.call();
+        const bid_2 = 1000;
+        const bid_1 = 1002;
+        const bid_max = 9999999;
+        const res_2 = await AuctionInstance.bidAuction(4, {
+            value: bid_2,
+            from: bider_2nd
+        });
+        const gas_used_2 = web3.utils.toBN(res_2.receipt.cumulativeGasUsed);
+        const res_1 = await AuctionInstance.bidAuction(4, {
+            value: bid_1,
+            from: bider_1st
+        });
+        await AuctionInstance.removeTimeout({
+            value: 0,
+            from: timeout_operator
+        });
+        const timeout = await AuctionInstance.checkTimeout.call();
+        assert(timeout, "timeout set to 0");
+        const res_3 = await AuctionInstance.bidAuction(4, {
+            value: bid_max,
+            from: bider_max
+        });
+        const gas_used_3 = web3.utils.toBN(res_3.receipt.cumulativeGasUsed);
+        const gas_used_1 = web3.utils.toBN(res_1.receipt.cumulativeGasUsed);
+        const after_1st = web3.utils.toBN(await web3.eth.getBalance(bider_1st));
+        const after_2nd = web3.utils.toBN(await web3.eth.getBalance(bider_2nd));
+        const after_max = web3.utils.toBN(await web3.eth.getBalance(bider_max));
+        const auction_after = await AuctionInstance.getBalance.call();
+        const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
+        const cost_1st = before_1st.sub(after_1st);
+        const gas_1st = gas_used_1.mul(gas_price);
+        const net_1st = cost_1st.sub(gas_1st);
+        const cost_2nd = before_2nd.sub(after_2nd);
+        const gas_2nd = gas_used_2.mul(gas_price);
+        const net_2nd = cost_2nd.sub(gas_2nd);
+        const gas_max = gas_used_3.mul(gas_price);
+        const cost_max = before_max.sub(after_max);
+        const net_max = cost_max.sub(gas_max);
+        const earn = holder_after.sub(holder_before);
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(4, bider_1st);
+        const originalHolder = await AuctionInstance.queryNFTOwner.call(4, holder);
+        assert(isSettleDown, "NFT owner should be bider");
+        assert(!originalHolder, "NFT original holder lost holding");
+        assert.equal(net_1st.toNumber(), bid_1, "highest balance");
+        assert.equal(net_2nd.toNumber(), 0, "second highest refund");
+        assert.equal(auction_after - auction_before, 0, "contract balance");
+        assert.equal(net_max.toNumber(), 0, "max after timeout refund");
+        assert.equal(earn.toNumber(), bid_1, "holder balance");
+    });
 
 });

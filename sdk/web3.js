@@ -18,12 +18,17 @@ async function run() {
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
     const bid_res = await Contract.methods.bidAuction(1).send({
-        value: 1014,
+        value: 1015,
         from: accounts[1]
     });
     console.log(`to: ${bid_res.to}`);
     console.log(`gas: ${bid_res.gasUsed}`);
     console.log(`Received event: ${bid_res.events.Received.returnValues[0]} ${bid_res.events.Received.returnValues[1]}`);
+    // await Contract.methods.removeTimeout();
+    // await Contract.methods.bidAuction(1).send({
+    //     value: 1015,
+    //     from: accounts[1]
+    // });
 }
 
 run();
