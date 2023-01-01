@@ -175,6 +175,12 @@ contract Auction is Ownable {
         }
     }
 
+    function queryNFTOwner(uint number, address owner) public returns (bool) {
+        nft = IERC1155(auctions[number].nftAddr);
+        uint r = nft.balanceOf(owner, number);
+        return r > 0;
+    }
+
     function onERC1155Received(
         address operator,
         address from,

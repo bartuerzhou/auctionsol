@@ -112,12 +112,13 @@ contract("Auction", function (accounts) {
         }
     });
     it("should settle down immediately on maximum bid", async function () {
-        return;
         const AuctionInstance = await Auction.deployed();
         const bider = accounts[1];
+        const holder = accounts[0];
         const receive_ether_addr = AuctionInstance.address;
         const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
         const bider_before = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const holder_before = web3.utils.toBN(await web3.eth.getBalance(holder));
         const auction_before = await AuctionInstance.getBalance.call();
         const bid = 9999999; // maximum price
         const res = await AuctionInstance.bidAuction(1, {
@@ -127,13 +128,17 @@ contract("Auction", function (accounts) {
         const receipt_to = web3.utils.toChecksumAddress(res.receipt.to);
         const gas_used = web3.utils.toBN(res.receipt.cumulativeGasUsed);
         const bider_after = web3.utils.toBN(await web3.eth.getBalance(bider));
+        const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
         const auction_after = await AuctionInstance.getBalance.call();
+        const earn = holder_after.sub(holder_before);
         const cost = bider_before.sub(bider_after);
         const gas = gas_used.mul(gas_price);
         const net = cost.sub(gas);
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(1, accounts[1]);
+        assert(isSettleDown, "NFT owner should be bider");
+        assert.equal(earn.toNumber(), bid, "holder balance");
         assert.equal(net.toNumber(), bid, "bider balance");
-        assert.equal(auction_after - auction_before, bid, "contract balance");
-        assert.equal(receipt_to, receive_ether_addr, "contract address on receipt");
+        assert.equal(auction_after - auction_before, 0, "contract balance");
     });
 
 });
