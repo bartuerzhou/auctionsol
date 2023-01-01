@@ -2,7 +2,7 @@
 import Web3 from "web3";
 import fs from "fs";
 import process from "process";
-// subscribe event need websocket http://localhost:8545
+// subscribe event need websocket ws://localhost:8545
 const web3 = new Web3(process.env.LOCAL_EVM_PROVIDER);
 
 // truffle networks
@@ -17,7 +17,10 @@ async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
-    const bid_res = await Contract.methods.bidAuction(4).send({
+    console.log(accounts);
+    // const total = await Contract.methods.initMarket(accounts, 999, 9999999, 1200).call();
+    // console.log(`total : ${total}`);
+    const bid_res = await Contract.methods.bidAuction(1).send({
         value: 1013,
         from: accounts[1]
     });

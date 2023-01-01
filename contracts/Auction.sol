@@ -7,56 +7,48 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract NFTToken is ERC1155, Ownable {
     address public selfaddr;
 
-    uint256 public constant total = 8;
-
-    constructor()
-        ERC1155("http://bazhou.blob.core.windows.net/NFToken/{id}.json")
-        onlyOwner
-    {
+    constructor() ERC1155("http://{id}.json") onlyOwner {
         selfaddr = address(this);
     }
 
-    function mintBatch(address[] memory owners) public {
-        require(owners.length == total, "length");
-        for (uint256 i = 0; i < owners.length; i++) {
-            _mint(owners[i], i + 1, 1, "");
-            _setApprovalForAll(owners[i], msg.sender, true);
+    function mintBatch(address holder, uint total) public {
+        for (uint256 i = 0; i < total; i++) {
+            _mint(holder, i + 1, 1, "");
+            _setApprovalForAll(holder, msg.sender, true);
         }
     }
 }
 
 contract Auction is Ownable {
-    address payable receive_ether_addr;
+    address payable public receive_ether_addr;
     IERC1155 public nft;
     uint public aucNumber = 1;
-    address[] public players = [
-        0x857a663d5398CcBc047CE1Dfeae7274Cc488d51e,
-        0x914B6156c7DAE787bFAF2AFddf6d809df9C08B10,
-        0xF40130F8111Ebb7863353c88ca084459df5081cb,
-        0xf58328Fcd87490eBdd6d0E1856D7BED353Ff732B,
-        0xdf68a46bfC60Fba103628Da3d5AE511dfD971F26,
-        0xdC0095Daed12F8f2703Fa9d5BaCc18D3d40B66eA,
-        0x0aaC824304cD2F8E56a926b908142a234a198969,
-        0x16127E492D5B4Af93919C93a226f81fC923b0E90
-    ];
     NFTToken private tok;
+
+    function initMarket(
+        address holder,
+        uint total,
+        uint min,
+        uint max,
+        uint timeout
+    ) public {
+        tok = new NFTToken();
+        tok.mintBatch(holder, total);
+        nft = IERC1155(address(tok));
+        for (uint256 i = 0; i < total; i++) {
+            createAuction(holder, tok.selfaddr(), i + 1, 1, min, max, timeout);
+        }
+    }
 
     constructor() {
         receive_ether_addr = payable(address(this));
-        tok = new NFTToken();
-        tok.mintBatch(players);
-        nft = IERC1155(address(tok));
-        for (uint256 i = 0; i < players.length; i++) {
-            createAuction(
-                players[i],
-                tok.selfaddr(),
-                i + 1,
-                1,
-                999,
-                9999999,
-                1200
-            );
-        }
+        initMarket(
+            0xF4e5B0afC2C521c47d39Efa43d1c2e93cB6C21Da,
+            4,
+            999,
+            9999999,
+            1200
+        );
     }
 
     /*
@@ -80,7 +72,6 @@ contract Auction is Ownable {
     }
 
     mapping(uint => AuctionItem) public auctions;
-    mapping(address => uint[]) public sellerAuctions;
 
     function createAuction(
         address seller,
@@ -90,7 +81,7 @@ contract Auction is Ownable {
         uint min,
         uint max,
         uint time
-    ) public payable {
+    ) public {
         require(msg.sender != address(0));
         if (max == 0) {
             max = 9999999999;
@@ -110,7 +101,6 @@ contract Auction is Ownable {
             address(0),
             false
         );
-        sellerAuctions[seller].push(aucNumber);
         aucNumber++;
     }
 
@@ -137,8 +127,9 @@ contract Auction is Ownable {
         }
 
         /* TODO: setup bug, only one and first bestBid */
+        require(msg.value > auctions[number].min, "min");
         require(!auctions[number].finished, "finished");
-        require(block.timestamp < auctions[number].time);
+        require(block.timestamp < auctions[number].time, "timeout");
         require(msg.value > auctions[number].bestBid, "pay");
 
         receive_ether_addr.transfer(msg.value);
@@ -172,8 +163,8 @@ contract Auction is Ownable {
     }
 
     function doneAuction(uint number) external {
-        require(block.timestamp > auctions[number].time, "finished");
-        require(!auctions[number].finished, "settled");
+        require(block.timestamp > auctions[number].time, "timeout");
+        require(!auctions[number].finished, "finished");
         /* TODO: setup bug, reclaim seller check */
         require(auctions[number].seller == msg.sender, "owner");
         if (auctions[number].bestBid > 0) {
