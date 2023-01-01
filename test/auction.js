@@ -135,7 +135,9 @@ contract("Auction", function (accounts) {
         const gas = gas_used.mul(gas_price);
         const net = cost.sub(gas);
         const isSettleDown = await AuctionInstance.queryNFTOwner.call(1, accounts[1]);
+        const originalHolder = await AuctionInstance.queryNFTOwner.call(1, accounts[0]);
         assert(isSettleDown, "NFT owner should be bider");
+        assert(!originalHolder, "NFT original holder lost holding");
         assert.equal(earn.toNumber(), bid, "holder balance");
         assert.equal(net.toNumber(), bid, "bider balance");
         assert.equal(auction_after - auction_before, 0, "contract balance");
