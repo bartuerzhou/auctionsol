@@ -20,13 +20,15 @@ async function createAuction() {
     const default_addr = await signer.getAddress();
     console.log(`accounts: ${accounts}`);
     console.log(`signer: ${default_addr}`);
-    const isOwner = await contract.functions.queryNFTOwner(2, default_addr);
+    const isOwner = await contract.queryNFTOwner(2, default_addr);
     console.log(`isOwner ${isOwner}`);
     const tx = await contract.bidAuction(3, {
-        value: ethers.utils.parseUnits("0.00001334", "gwei") // in wei
+        value: ethers.utils.parseUnits("0.00001434", "gwei") // in wei
     });
     console.log(`to: ${tx.to}`);
-    console.log(`gas: ${tx.gasPrice}`);
+    console.log(`gasPrice: ${tx.gasPrice}`);
+    const bestBid = await contract.queryBid(3);
+    console.log(`best bid on 3: ${bestBid}`);
 }
 
 createAuction();

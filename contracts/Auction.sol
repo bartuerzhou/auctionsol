@@ -163,13 +163,16 @@ contract Auction is Ownable {
         finishAuction(number);
     }
 
+    function queryBid(uint i) external view returns (uint) {
+        return auctions[i].bestBid;
+    }
+
     /* unit test purpose */
     function queryNFTOwner(
         uint number,
         address owner
     ) external view returns (bool) {
-        uint r = nft.balanceOf(owner, number);
-        return r > 0;
+        return nft.balanceOf(owner, number) > 0;
     }
 
     /* unit test purpose */
@@ -178,6 +181,7 @@ contract Auction is Ownable {
         auctions[i].time = 0;
     }
 
+    /* unit test purpose */
     function checkTimeout(uint i) public view returns (bool) {
         return block.timestamp > auctions[i].time;
     }
