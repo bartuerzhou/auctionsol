@@ -79,7 +79,6 @@ contract Auction is Ownable {
             max = 9999999999;
         }
         require(min > 0 && max > min && time > 0, "setting");
-        nft = IERC1155(_nftAddr);
         nft.safeTransferFrom(seller, address(this), id, amount, "");
         auctions[aucNumber] = AuctionItem(
             msg.sender,
@@ -142,7 +141,6 @@ contract Auction is Ownable {
 
     function finishAuction(uint number) internal {
         auctions[number].finished = true;
-        nft = IERC1155(auctions[number].nftAddr);
         nft.safeTransferFrom(
             address(this),
             auctions[number].bestBidAddr,
@@ -166,14 +164,17 @@ contract Auction is Ownable {
     }
 
     /* unit test purpose */
-    function queryNFTOwner(uint number, address owner) public returns (bool) {
-        nft = IERC1155(auctions[number].nftAddr);
+    function queryNFTOwner(
+        uint number,
+        address owner
+    ) external view returns (bool) {
         uint r = nft.balanceOf(owner, number);
         return r > 0;
     }
 
     /* unit test purpose */
     function removeTimeout(uint i) public payable {
+        /* TODO: setup bug, require(msg.sender == auctions[i].seller, "owner")  */
         auctions[i].time = 0;
     }
 

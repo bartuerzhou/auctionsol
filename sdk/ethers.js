@@ -16,12 +16,17 @@ const get_abi = async(json_file) => {
 async function createAuction() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const contract = new ethers.Contract(address, ABI, signer);
-
-    const add_res = await contract.functions.add(2, 4);
-    console.log(`add result : ${add_res}`);
-
-    const noop_res = await contract.functions.noop();
-    console.log(`noop result : ${noop_res}`);
+    const accounts = await provider.listAccounts();
+    const default_addr = await signer.getAddress();
+    console.log(`accounts: ${accounts}`);
+    console.log(`signer: ${default_addr}`);
+    const isOwner = await contract.functions.queryNFTOwner(2, default_addr);
+    console.log(`isOwner ${isOwner}`);
+    const tx = await contract.bidAuction(3, {
+        value: ethers.utils.parseUnits("0.00001334", "gwei") // in wei
+    });
+    console.log(`to: ${tx.to}`);
+    console.log(`gas: ${tx.gasPrice}`);
 }
 
 createAuction();
