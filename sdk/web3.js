@@ -17,24 +17,25 @@ async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
+    const NFTID = 8;
     // bid API
-    const bid_res = await Contract.methods.bidAuction(1).send({
-        value: 1018,
+    const bid_res = await Contract.methods.bidAuction(NFTID).send({
+        value: 1019,
         from: accounts[1]
     });
     console.log(`bid to: ${bid_res.to}`);
     console.log(`bid gas: ${bid_res.gasUsed}`);
     console.log(`bid Received event: ${bid_res.events.Received.returnValues[0]} ${bid_res.events.Received.returnValues[1]}`);
-    await Contract.methods.removeTimeout(3).send({
-        from: accounts[3]
+    await Contract.methods.removeTimeout(NFTID).send({
+        from: accounts[8]
     });
-    const timeout = await Contract.methods.checkTimeout(3).call();
+    const timeout = await Contract.methods.checkTimeout(NFTID).call();
     console.log(`timeout: ${timeout}`);
     // reclaim API
-    const reclaim_res = await Contract.methods.doneAuction(3).send({
+    const reclaim_res = await Contract.methods.reclaimAuction(NFTID).send({
         from: accounts[0]
     });
-    const reclaim = await Contract.methods.queryNFTOwner(3, accounts[0]).call();
+    const reclaim = await Contract.methods.queryNFTOwner(NFTID, accounts[0]).call();
     console.log(`reclaim: ${reclaim}`);
     console.log(`reclaim to: ${reclaim_res.to}`);
     console.log(`reclaim gas: ${reclaim_res.gasUsed}`);

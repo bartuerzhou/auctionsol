@@ -28,9 +28,9 @@ contract Auction is Ownable {
     constructor() {
         receive_ether_addr = payable(address(this));
         tok = new NFTToken();
-        tok.mintBatch(msg.sender, 8);
+        tok.mintBatch(msg.sender, 10);
         nft = IERC1155(address(tok));
-        for (uint256 i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 10; i++) {
             createAuction(
                 msg.sender,
                 tok.selfaddr(),
@@ -153,7 +153,7 @@ contract Auction is Ownable {
         );
     }
 
-    function doneAuction(uint number) external payable {
+    function reclaimAuction(uint number) external payable {
         /* TODO: setup bug, reclaim with payment */
         require(msg.value == 0, "free");
         require(block.timestamp > auctions[number].time, "timeout");

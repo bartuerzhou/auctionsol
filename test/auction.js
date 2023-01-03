@@ -223,7 +223,7 @@ contract("Auction", function (accounts) {
         const timeout = await AuctionInstance.checkTimeout.call(4);
         assert(timeout, "timeout set to 0");
         const holder_before = web3.utils.toBN(await web3.eth.getBalance(holder));
-        const res = await AuctionInstance.doneAuction(4);
+        const res = await AuctionInstance.reclaimAuction(4);
         const gas_used = web3.utils.toBN(res.receipt.cumulativeGasUsed);
         const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
         const isReclaimed = await AuctionInstance.queryNFTOwner.call(4, holder);
@@ -234,7 +234,7 @@ contract("Auction", function (accounts) {
         assert(isReclaimed, "holder reclaim");
     });
 
-    it("should settle down highest bid when relaim", async function () {
+    it("should settle down highest bid when reclaim", async function () {
         const AuctionInstance = await Auction.deployed();
         const holder = accounts[0];
         const gas_price = web3.utils.toBN(await web3.eth.getGasPrice());
@@ -254,7 +254,7 @@ contract("Auction", function (accounts) {
         });
         const timeout = await AuctionInstance.checkTimeout.call(6);
         assert(timeout, "timeout set to 0");
-        const res_done = await AuctionInstance.doneAuction(6);
+        const res_done = await AuctionInstance.reclaimAuction(6);
         const gas_used_done = web3.utils.toBN(res_done.receipt.cumulativeGasUsed);
         const holder_after = web3.utils.toBN(await web3.eth.getBalance(holder));
         const bider_after = web3.utils.toBN(await web3.eth.getBalance(bider));
@@ -283,7 +283,7 @@ contract("Auction", function (accounts) {
         const timeout = await AuctionInstance.checkTimeout.call(4);
         assert(timeout, "timeout set to 0");
         try {
-            const res_done = await AuctionInstance.doneAuction(4);
+            const res_done = await AuctionInstance.reclaimAuction(4);
             throw res_done;
         } catch (e) {
             const expect_err = "revert finished";
@@ -295,7 +295,7 @@ contract("Auction", function (accounts) {
     it("should reject reclaim before timeout", async function () {
         const AuctionInstance = await Auction.deployed();
         try {
-            const res_done = await AuctionInstance.doneAuction(7);
+            const res_done = await AuctionInstance.reclaimAuction(7);
             throw res_done;
         } catch (e) {
             const expect_err = "revert timeout";
