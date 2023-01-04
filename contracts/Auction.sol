@@ -61,7 +61,7 @@ contract Auction is Ownable {
 
      +----------------- [Region Unit Test Map]--------------------+
                              
-               1: - bid be payable,
+               1: - bid be payable
                   - secound highest bid refund
                   - reject not best latest bid
                2: - reject below minimum bid
