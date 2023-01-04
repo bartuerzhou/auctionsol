@@ -63,15 +63,15 @@ contract Auction is Ownable {
 
     struct AuctionItem {
         address seller;
-        address nftAddr;
-        uint min;
-        uint max;
+        address nftAddr /* for create IERC1155 */;
+        uint min /* minimum price, reject below */;
+        uint max /* maximum price, settle immediately */;
         uint id /* nft token id */;
         uint amount /* most ntf token be 1 */;
         uint time /* auction time out */;
         uint bestBid;
-        address bestBidAddr;
-        bool finished /* settle down */;
+        address bestBidAddr /* best bider address */;
+        bool finished /* settle down or reclaim */;
     }
 
     mapping(uint => AuctionItem) public auctions;
@@ -106,7 +106,7 @@ contract Auction is Ownable {
 
     /*
 
-    +----------------------{ Paymet Table}-----------------------+
+    +----------------------{ Paymet Table }----------------------+
     |   stage   |   seller  |contract|   bider   |   comments    |
     +-----------+-----------+--------+-----------+---------------+
     |           (token)                            constructor   |
