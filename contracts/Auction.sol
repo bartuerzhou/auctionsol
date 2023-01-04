@@ -49,15 +49,28 @@ contract Auction is Ownable {
              TIME
                ^                                
                |                                
-               |rrrrr|$$$$$|$$$$$                +---legend----+
-               |rrrrr|$$$$$|$$$$$                | r : reclaim |
-               |rrrrr|$$$$$|$$$$$                | $ : settle  |
+               |rrrrr|$$$$$$$$$$$                +---legend----+
+               |rr5rr|$$$$$4$$$$$                | r : reclaim |
+               |rrrrr|$$$$$$$$$$$                | $ : settle  |
      [timeout] +-----+-----+-----                | x : reject  |
                |xxxxx|bbbbb|$$$$$                | b : bid     |
-               |xxxxx|bbbbb|$$$$$                +---legend----+
+               |xx2xx|bb1bb|$$3$$                +---legend----+
                |xxxxx|bbbbb|$$$$$ 
                +-----+-----+-------> PRICE
                    [min] [max]
+
+     +----------------- [Region Unit Test Map]--------------------+
+                             
+               1: - bid be payable,
+                  - secound highest bid refund
+                  - reject not best latest bid
+               2: - reject below minimum bid
+               3: - settle down immediately on maximum bid
+               4: - settle down on highest bid when timeout
+                  - settle down highest bid when reclaim
+               5: - reclaim
+                  - reject reclaim on finished
+                  - reject reclaim before timeout
 
     */
 
@@ -119,7 +132,7 @@ contract Auction is Ownable {
     |                       [contract] <<< (ether) transfer      |
     |                       [contract] >>> (ether) refund second |
     |                       [contract] xxx (ether) min reject    | 
-    +-----------+-----------+--------+-----------+---------------+
+    +-----------+-----------+--------+-----------+---------------+ [timeout]
     |           (ether) <<< [contract] >>> (token) finishAuction |
     |  settle   (token) <<< [contract]             reclaimAuction| 
     +------------------------------------------------------------+
