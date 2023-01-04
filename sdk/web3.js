@@ -17,18 +17,19 @@ async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
-    const NFTID = 8;
+    const NFTID = 10;
     // bid API
     const bid_res = await Contract.methods.bidAuction(NFTID).send({
-        value: 1019,
+        value: 10212,
         from: accounts[1]
     });
     console.log(`bid to: ${bid_res.to}`);
     console.log(`bid gas: ${bid_res.gasUsed}`);
-    console.log(`bid Received event: ${bid_res.events.Received.returnValues[0]} ${bid_res.events.Received.returnValues[1]}`);
+    console.log('bid Received event: ${Object.keys(bid_res.events.Received)}');
     await Contract.methods.removeTimeout(NFTID).send({
         from: accounts[8]
     });
+    await Contract.methods.removeTimeout(NFTID).call();
     const timeout = await Contract.methods.checkTimeout(NFTID).call();
     console.log(`timeout: ${timeout}`);
     // reclaim API
