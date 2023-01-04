@@ -22,7 +22,6 @@ contract NFTToken is ERC1155, Ownable {
 contract Auction is Ownable {
     address payable public receive_ether_addr;
     IERC1155 public nft;
-    uint public aucNumber = 1;
     NFTToken private tok;
 
     constructor() {
@@ -34,8 +33,7 @@ contract Auction is Ownable {
             createAuction(
                 msg.sender,
                 tok.selfaddr(),
-                i + 1,
-                1,
+                i + 1 /* tokid == aucid */,
                 999,
                 9999999,
                 1200
@@ -44,10 +42,23 @@ contract Auction is Ownable {
     }
 
     /*
-      TODO:business logic graph, settle down cases
-      a) time out and biding
-      b) time out and reclaim
-      c) biding hit max, done immediately
+
+    +--------------------{ Logic Coverage Map }-------------------+    
+
+
+             TIME
+               ^                                
+               |                                
+               |rrrrr|$$$$$|$$$$$                +---legend----+
+               |rrrrr|$$$$$|$$$$$                | r : reclaim |
+               |rrrrr|$$$$$|$$$$$                | $ : settle  |
+     [timeout] +-----+-----+-----                | x : reject  |
+               |xxxxx|bbbbb|$$$$$                | b : bid     |
+               |xxxxx|bbbbb|$$$$$                +---legend----+
+               |xxxxx|bbbbb|$$$$$ 
+               +-----+-----+-------> PRICE
+                   [min] [max]
+
     */
 
     struct AuctionItem {
@@ -56,7 +67,7 @@ contract Auction is Ownable {
         uint min;
         uint max;
         uint id /* nft token id */;
-        uint amount;
+        uint amount /* most ntf token be 1 */;
         uint time /* auction time out */;
         uint bestBid;
         address bestBidAddr;
@@ -68,8 +79,7 @@ contract Auction is Ownable {
     function createAuction(
         address seller,
         address _nftAddr,
-        uint id,
-        uint amount,
+        uint tokid,
         uint min,
         uint max,
         uint time
@@ -79,22 +89,42 @@ contract Auction is Ownable {
             max = 9999999999;
         }
         require(min > 0 && max > min && time > 0, "setting");
-        nft.safeTransferFrom(seller, address(this), id, amount, "");
-        auctions[aucNumber] = AuctionItem(
+        nft.safeTransferFrom(seller, address(this), tokid, 1, "");
+        auctions[tokid] = AuctionItem(
             msg.sender,
             _nftAddr,
             min,
             max,
-            id,
-            amount,
+            tokid,
+            1,
             block.timestamp + time,
             0,
             msg.sender,
             false
         );
-        aucNumber++;
     }
 
+    /*
+
+    +----------------------{ Paymet Table}-----------------------+
+    |   stage   |   seller  |contract|   bider   |   comments    |
+    +-----------+-----------+--------+-----------+---------------+
+    |           (token)                            constructor   |
+    | create    (token)                            NFTToken      |  
+    |           (token) >>> [contract]             mintBatch     |
+    |           (token) >>> [contract]             createAuction |
+    +-----------+-----------+--------+-----------+---------------+
+    |                       [contract] <<< (ether) bidAuction    |
+    |   bid                 [contract] >>> (ether) transfer_ether|       
+    |                       [contract] <<< (ether) transfer      |
+    |                       [contract] >>> (ether) refund second |
+    |                       [contract] xxx (ether) min reject    | 
+    +-----------+-----------+--------+-----------+---------------+
+    |           (ether) <<< [contract] >>> (token) finishAuction |
+    |  settle   (token) <<< [contract]             reclaimAuction| 
+    +------------------------------------------------------------+
+
+    */
     function transfer_ether(address to) public payable {
         payable(to).transfer(msg.value);
     }
@@ -109,82 +139,81 @@ contract Auction is Ownable {
         emit Received(msg.sender, msg.value);
     }
 
-    function bidAuction(uint number) external payable {
+    function bidAuction(uint tokid) external payable {
         if (
-            block.timestamp > auctions[number].time &&
-            !auctions[number].finished
+            block.timestamp > auctions[tokid].time && !auctions[tokid].finished
         ) {
             this.transfer_ether{value: msg.value}(msg.sender);
-            finishAuction(number);
+            finishAuction(tokid);
         } else {
             /* TODO: setup bug, only one and first bestBid */
-            require(msg.value > auctions[number].min, "min");
-            require(!auctions[number].finished, "finished");
-            require(block.timestamp < auctions[number].time, "timeout");
-            require(msg.value > auctions[number].bestBid, "pay");
+            require(msg.value > auctions[tokid].min, "min");
+            require(!auctions[tokid].finished, "finished");
+            require(block.timestamp < auctions[tokid].time, "timeout");
+            require(msg.value > auctions[tokid].bestBid, "pay");
 
             receive_ether_addr.transfer(msg.value);
-            if (msg.value >= auctions[number].max) {
-                auctions[number].bestBid = msg.value;
-                auctions[number].bestBidAddr = msg.sender;
-                finishAuction(number);
+            if (msg.value >= auctions[tokid].max) {
+                auctions[tokid].bestBid = msg.value;
+                auctions[tokid].bestBidAddr = msg.sender;
+                finishAuction(tokid);
             } else {
                 /* TODO: setup bug, refund ether when bestBid replaced */
-                this.transfer_ether{value: auctions[number].bestBid}(
-                    auctions[number].bestBidAddr
+                this.transfer_ether{value: auctions[tokid].bestBid}(
+                    auctions[tokid].bestBidAddr
                 );
-                auctions[number].bestBid = msg.value;
-                auctions[number].bestBidAddr = msg.sender;
+                auctions[tokid].bestBid = msg.value;
+                auctions[tokid].bestBidAddr = msg.sender;
             }
         }
     }
 
-    function finishAuction(uint number) internal {
-        auctions[number].finished = true;
+    function finishAuction(uint tokid) internal {
+        auctions[tokid].finished = true;
         nft.safeTransferFrom(
             address(this),
-            auctions[number].bestBidAddr,
-            auctions[number].id,
-            auctions[number].amount,
+            auctions[tokid].bestBidAddr,
+            auctions[tokid].id,
+            auctions[tokid].amount,
             ""
         );
-        this.transfer_ether{value: auctions[number].bestBid}(
-            auctions[number].seller
+        this.transfer_ether{value: auctions[tokid].bestBid}(
+            auctions[tokid].seller
         );
     }
 
-    function reclaimAuction(uint number) external payable {
+    function reclaimAuction(uint tokid) external payable {
         /* TODO: setup bug, reclaim with payment */
         require(msg.value == 0, "free");
-        require(block.timestamp > auctions[number].time, "timeout");
-        require(!auctions[number].finished, "finished");
+        require(block.timestamp > auctions[tokid].time, "timeout");
+        require(!auctions[tokid].finished, "finished");
         /* TODO: setup bug, reclaim seller check */
-        require(auctions[number].seller == msg.sender, "owner");
-        finishAuction(number);
+        require(auctions[tokid].seller == msg.sender, "owner");
+        finishAuction(tokid);
     }
 
-    function queryBid(uint i) external view returns (uint) {
-        return auctions[i].bestBid;
+    function queryBid(uint tokid) external view returns (uint) {
+        return auctions[tokid].bestBid;
     }
 
     /* unit test purpose */
     function queryNFTOwner(
-        uint number,
+        uint tokiid,
         address owner
     ) external view returns (bool) {
-        return nft.balanceOf(owner, number) > 0;
+        return nft.balanceOf(owner, tokiid) > 0;
     }
 
     /* unit test purpose */
     /* not modify as payable can be called with payment from to change state */
-    function removeTimeout(uint i) public payable {
+    function removeTimeout(uint tokid) public payable {
         /* TODO: setup bug, require(msg.sender == auctions[i].seller, "owner")  */
-        auctions[i].time = 0;
+        auctions[tokid].time = 0;
     }
 
     /* unit test purpose */
-    function checkTimeout(uint i) public view returns (bool) {
-        return block.timestamp > auctions[i].time;
+    function checkTimeout(uint tokid) public view returns (bool) {
+        return block.timestamp > auctions[tokid].time;
     }
 
     function onERC1155Received(
