@@ -6,7 +6,14 @@ const Auction = artifacts.require("Auction");
  * See docs: https://www.trufflesuite.com/docs/truffle/testing/writing-tests-in-javascript
  */
 async function get_gas_used(tx_res) {
-    const receipt = await web3.eth.getTransactionReceipt(tx_res.receipt.transactionHash);
+    let hash = "";
+    if (typeof (tx_res) == "string") {
+        hash = tx_res;
+    } else {
+        hash = tx_res.receipt.transactionHash;
+    }
+
+    const receipt = await web3.eth.getTransactionReceipt(hash);
     const gas = web3.utils.toBN(receipt.cumulativeGasUsed);
     const price = web3.utils.toBN(receipt.effectiveGasPrice);
     return gas.mul(price);
@@ -24,8 +31,13 @@ contract("Auction", function (accounts) {
     const bid_max = web3.utils.toWei("10", "ether");
     const bid_below_min = web3.utils.toWei("0.5", "ether"); // min is 1
 
-    it("should assert true", async function () {
-        return assert.isTrue(true);
+    it("should deploy gas be small", async function () {
+        const block = await web3.eth.getBlock('latest');
+        const txhash = block.transactions[block.transactions.length - 1];
+        const gas = await get_gas_used(txhash);
+        const deployed_gas = web3.utils.fromWei(gas);
+        console.log(`deploy gas: ${deployed_gas} ether`);
+        return assert(deployed_gas < 0.02, "deployed gas should be less than 0.02 ethers");
     });
 
     it("should bid be payable", async function () {
