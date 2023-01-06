@@ -34,8 +34,8 @@ contract Auction is Ownable {
                 msg.sender,
                 tok.selfaddr(),
                 i + 1 /* tokid == aucid */,
-                999,
-                9999999,
+                1 * 10 ** 18,
+                10 * 10 ** 18,
                 1200
             );
         }
@@ -83,7 +83,7 @@ contract Auction is Ownable {
         uint amount /* most ntf token be 1 */;
         uint time /* auction time out */;
         uint bestBid;
-        address bestBidAddr /* best bider address */;
+        address bestBidAddr /* best bidder address */;
         bool finished /* settle down or reclaim */;
     }
 
@@ -120,7 +120,7 @@ contract Auction is Ownable {
     /*
 
     +----------------------{ Paymet Table }----------------------+
-    |   stage   |   seller  |contract|   bider   |   comments    |
+    |   stage   |   seller  |contract|  bidder   |   comments    |
     +-----------+-----------+--------+-----------+---------------+
     |           (token)                            constructor   |
     | create    (token)                            NFTToken      |  
@@ -166,15 +166,15 @@ contract Auction is Ownable {
             require(msg.value > auctions[tokid].bestBid, "pay");
 
             receive_ether_addr.transfer(msg.value);
+            this.transfer_ether{value: auctions[tokid].bestBid}(
+                auctions[tokid].bestBidAddr
+            );
             if (msg.value >= auctions[tokid].max) {
                 auctions[tokid].bestBid = msg.value;
                 auctions[tokid].bestBidAddr = msg.sender;
                 finishAuction(tokid);
             } else {
                 /* TODO: setup bug, refund ether when bestBid replaced */
-                this.transfer_ether{value: auctions[tokid].bestBid}(
-                    auctions[tokid].bestBidAddr
-                );
                 auctions[tokid].bestBid = msg.value;
                 auctions[tokid].bestBidAddr = msg.sender;
             }
