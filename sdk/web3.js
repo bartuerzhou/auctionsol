@@ -17,7 +17,7 @@ async function run() {
     const ABI = await get_abi(process.env.LOCAL_EVM_CONTRACT_ABI);
     const Contract = new web3.eth.Contract(ABI, address);
     const accounts = await web3.eth.getAccounts();
-    const NFTID = 10;
+    const NFTID = 5;
     // bid API
     const bid_res = await Contract.methods.bidAuction(NFTID).send({
         value: 10212,

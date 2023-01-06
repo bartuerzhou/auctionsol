@@ -18,7 +18,7 @@ async function createAuction() {
     const contract = new ethers.Contract(address, ABI, signer);
     const accounts = await provider.listAccounts();
     const default_addr = await signer.getAddress();
-    const NFTID = 9;
+    const NFTID = 5;
     console.log(`accounts: ${accounts}`);
     console.log(`signer: ${default_addr}`);
     const isOwner = await contract.queryNFTOwner(NFTID, default_addr);

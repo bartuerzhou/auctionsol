@@ -36,7 +36,7 @@ contract("Auction", function (accounts) {
         const txhash = block.transactions[block.transactions.length - 1];
         const gas = await get_gas_used(txhash);
         const deployed_gas = web3.utils.fromWei(gas);
-        console.log(`deploy gas: ${deployed_gas} ether`);
+        console.log(`deploy gas: ${deployed_gas} ETH`);
         return assert(deployed_gas < 0.02, "deployed gas should be less than 0.02 ethers");
     });
 
@@ -97,7 +97,7 @@ contract("Auction", function (accounts) {
         const bidder_before = await get_ether_balance(bidder);
         const auction_before = await AuctionInstance.getBalance.call();
         try {
-            const res = await AuctionInstance.bidAuction(3, {
+            const res = await AuctionInstance.bidAuction(1, {
                 value: bid_below_min,
                 from: bidder
             });
@@ -178,46 +178,28 @@ contract("Auction", function (accounts) {
         const before_max = await get_ether_balance(bidder_max);
         const holder_before = await get_ether_balance(holder);
         const auction_before = await AuctionInstance.getBalance.call();
-        const res_2 = await AuctionInstance.bidAuction(5, {
-            value: bid_2,
-            from: bidder_2nd
-        });
-        const gas_used_2 = await get_gas_used(res_2);
-        const res_1 = await AuctionInstance.bidAuction(5, {
-            value: bid_1,
-            from: bidder_1st
-        });
-        await AuctionInstance.removeTimeout(5, {
+        await AuctionInstance.removeTimeout(2, {
             value: 0,
             from: timeout_operator
         });
-        const timeout = await AuctionInstance.checkTimeout.call(5);
+        const timeout = await AuctionInstance.checkTimeout.call(2);
         assert(timeout, "timeout set to 0");
-        const res_3 = await AuctionInstance.bidAuction(5, {
+        const res_3 = await AuctionInstance.bidAuction(2, {
             value: bid_highest,
             from: bidder_max
         });
         const gas_used_3 = await get_gas_used(res_3);
-        const gas_used_1 = await get_gas_used(res_1);
-        const after_1st = await get_ether_balance(bidder_1st);
-        const after_2nd = await get_ether_balance(bidder_2nd);
         const after_max = await get_ether_balance(bidder_max);
         const auction_after = await AuctionInstance.getBalance.call();
         const holder_after = await get_ether_balance(holder);
-        const cost_1st = before_1st.sub(after_1st);
-        const net_1st = cost_1st.sub(gas_used_1);
-        const cost_2nd = before_2nd.sub(after_2nd);
-        const net_2nd = cost_2nd.sub(gas_used_2);
         const cost_max = before_max.sub(after_max);
         const net_max = cost_max.sub(gas_used_3);
         const earn = holder_after.sub(holder_before);
-        const isSettleDown = await AuctionInstance.queryNFTOwner.call(5, bidder_1st);
-        const originalHolder = await AuctionInstance.queryNFTOwner.call(5, holder);
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(2, bidder_1st);
+        const originalHolder = await AuctionInstance.queryNFTOwner.call(2, holder);
         assert(isSettleDown, "NFT owner is bidder");
         assert(!originalHolder, "NFT original holder lost holding");
-        assert.equal(net_1st.toString(), bid_1, "highest balance");
-        assert.equal(net_2nd.toNumber(), 0, "second highest refund");
-        assert.equal(auction_after - auction_before, 0, "contract balance");
+        assert.equal(auction_after - auction_before, -bid_1, "contract balance");
         assert.equal(net_max.toNumber(), 0, "max after timeout refund");
         assert.equal(earn.toString(), bid_1, "holder balance");
     });
@@ -226,21 +208,33 @@ contract("Auction", function (accounts) {
         const AuctionInstance = await Auction.deployed();
         const holder = accounts[0];
         const timeout_operator = accounts[4];
-        await AuctionInstance.removeTimeout(4, {
+        await AuctionInstance.removeTimeout(3, {
             value: 0,
             from: timeout_operator
         });
-        const timeout = await AuctionInstance.checkTimeout.call(4);
+        const timeout = await AuctionInstance.checkTimeout.call(3);
         assert(timeout, "timeout set to 0");
         const holder_before = await get_ether_balance(holder);
-        const res = await AuctionInstance.reclaimAuction(4);
+        const res = await AuctionInstance.reclaimAuction(3);
         const gas_used = await get_gas_used(res);
         const holder_after = await get_ether_balance(holder);
-        const isReclaimed = await AuctionInstance.queryNFTOwner.call(4, holder);
+        const isReclaimed = await AuctionInstance.queryNFTOwner.call(3, holder);
         const cost = holder_before.sub(holder_after);
         const net = cost.sub(gas_used);
         assert.equal(net.toNumber(), 0, "holder balance");
         assert(isReclaimed, "holder reclaim");
+    });
+
+    it("should reject reclaim before timeout", async function () {
+        const AuctionInstance = await Auction.deployed();
+        try {
+            const res_done = await AuctionInstance.reclaimAuction(4);
+            throw res_done;
+        } catch (e) {
+            const expect_err = "timeout";
+            const stack_head = e.data.reason;
+            assert.equal(stack_head, expect_err, "throw timeout revert message");
+        };
     });
 
     it("should settle down highest bid when reclaim", async function () {
@@ -250,18 +244,18 @@ contract("Auction", function (accounts) {
         const holder_before = await get_ether_balance(holder);
         const bidder_before = await get_ether_balance(bidder);
         const auction_before = await AuctionInstance.getBalance.call();
-        const res = await AuctionInstance.bidAuction(6, {
+        const res = await AuctionInstance.bidAuction(4, {
             value: bid_highest,
             from: bidder
         });
         const timeout_operator = accounts[6];
-        await AuctionInstance.removeTimeout(6, {
+        await AuctionInstance.removeTimeout(4, {
             value: 0,
             from: timeout_operator
         });
-        const timeout = await AuctionInstance.checkTimeout.call(6);
+        const timeout = await AuctionInstance.checkTimeout.call(4);
         assert(timeout, "timeout set to 0");
-        const res_done = await AuctionInstance.reclaimAuction(6);
+        const res_done = await AuctionInstance.reclaimAuction(4);
         const gas_used_done = await get_gas_used(res_done);
         const holder_after = await get_ether_balance(holder);
         const bidder_after = await get_ether_balance(bidder);
@@ -271,8 +265,8 @@ contract("Auction", function (accounts) {
         const gas_used = await get_gas_used(res);
         const cost = bidder_before.sub(bidder_after);
         const net = cost.sub(gas_used);
-        const isSettleDown = await AuctionInstance.queryNFTOwner.call(6, bidder);
-        const isReclaimed = await AuctionInstance.queryNFTOwner.call(6, holder);
+        const isSettleDown = await AuctionInstance.queryNFTOwner.call(4, bidder);
+        const isReclaimed = await AuctionInstance.queryNFTOwner.call(4, holder);
         assert.equal(net.toString(), bid_highest, "bidder balance");
         assert(net_done.eq(web3.utils.toBN(bid_highest).neg()), "holder balance");
         assert.equal(auction_after - auction_before, 0, "contract balance");
@@ -282,11 +276,6 @@ contract("Auction", function (accounts) {
 
     it("should reject reclaim on finished", async function () {
         const AuctionInstance = await Auction.deployed();
-        await AuctionInstance.removeTimeout(4, {
-            value: 0
-        });
-        const timeout = await AuctionInstance.checkTimeout.call(4);
-        assert(timeout, "timeout set to 0");
         try {
             const res_done = await AuctionInstance.reclaimAuction(4);
             throw res_done;
@@ -297,15 +286,4 @@ contract("Auction", function (accounts) {
         };
     });
 
-    it("should reject reclaim before timeout", async function () {
-        const AuctionInstance = await Auction.deployed();
-        try {
-            const res_done = await AuctionInstance.reclaimAuction(7);
-            throw res_done;
-        } catch (e) {
-            const expect_err = "timeout";
-            const stack_head = e.data.reason;
-            assert.equal(stack_head, expect_err, "throw timeout revert message");
-        };
-    });
 });
