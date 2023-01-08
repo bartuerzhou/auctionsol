@@ -193,6 +193,7 @@ contract Auction is Ownable {
         this.transfer_ether{value: auctions[tokid].bestBid}(
             auctions[tokid].seller
         );
+        auctions[tokid].seller = auctions[tokid].bestBidAddr;
     }
 
     function reclaimAuction(uint tokid) external payable {
@@ -207,6 +208,10 @@ contract Auction is Ownable {
 
     function queryBid(uint tokid) external view returns (uint) {
         return auctions[tokid].bestBid;
+    }
+
+    function queryAuction(uint tokid) external view returns (address) {
+        return auctions[tokid].seller;
     }
 
     /* unit test purpose */

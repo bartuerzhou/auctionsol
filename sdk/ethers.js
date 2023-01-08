@@ -23,13 +23,19 @@ async function createAuction() {
     console.log(`signer: ${default_addr}`);
     const isOwner = await contract.queryNFTOwner(NFTID, default_addr);
     console.log(`isOwner ${isOwner}`);
-    const tx = await contract.bidAuction(NFTID, {
-        value: ethers.utils.parseUnits("0.00001434", "gwei") // in wei
-    });
-    console.log(`to: ${tx.to}`);
-    console.log(`gasPrice: ${tx.gasPrice}`);
+    try {
+        const tx = await contract.bidAuction(NFTID, {
+            value: ethers.utils.parseUnits("1.1", "ether") // in wei
+        });
+        console.log(`to: ${tx.to}`);
+        console.log(`gasPrice: ${tx.gasPrice}`);
+    } catch (e) {
+        console.log(`${e.data.reason}`);
+    }
     const bestBid = await contract.queryBid(NFTID);
     console.log(`best bid on ${NFTID}: ${bestBid}`);
+    const owner = await contract.queryAuction(NFTID);
+    console.log(`owner of ${NFTID} ${owner}`);
 }
 
 createAuction();
