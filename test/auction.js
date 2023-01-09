@@ -174,16 +174,17 @@ contract("Auction", function (accounts) {
         const bidder_2nd = accounts[2];
         const bidder_1st = accounts[3];
         const bidder_max = accounts[4];
-        const timeout_operator = accounts[5];
+        const timeout_operator = accounts[0];
         const before_1st = await get_ether_balance(bidder_1st);
         const before_2nd = await get_ether_balance(bidder_2nd);
         const before_max = await get_ether_balance(bidder_max);
         const holder_before = await get_ether_balance(holder);
         const auction_before = await AuctionInstance.getBalance.call();
-        await AuctionInstance.removeTimeout(2, {
+        const res_timeout = await AuctionInstance.removeTimeout(2, {
             value: 0,
             from: timeout_operator
         });
+        const timeout_gas = await get_gas_used(res_timeout);
         const timeout = await AuctionInstance.checkTimeout.call(2);
         assert(timeout, "timeout set to 0");
         const res_3 = await AuctionInstance.bidAuction(2, {
@@ -196,7 +197,7 @@ contract("Auction", function (accounts) {
         const holder_after = await get_ether_balance(holder);
         const cost_max = before_max.sub(after_max);
         const net_max = cost_max.sub(gas_used_3);
-        const earn = holder_after.sub(holder_before);
+        const earn = holder_after.sub(holder_before).add(timeout_gas);
         const isSettleDown = await AuctionInstance.queryNFTOwner.call(2, bidder_1st);
         const originalHolder = await AuctionInstance.queryNFTOwner.call(2, holder);
         assert(isSettleDown, "NFT owner is bidder");
@@ -209,20 +210,21 @@ contract("Auction", function (accounts) {
     it("should reclaim", async function () {
         const AuctionInstance = await Auction.deployed();
         const holder = accounts[0];
-        const timeout_operator = accounts[4];
-        await AuctionInstance.removeTimeout(3, {
+        const holder_before = await get_ether_balance(holder);
+        const timeout_operator = accounts[0];
+        const res_timeout = await AuctionInstance.removeTimeout(3, {
             value: 0,
             from: timeout_operator
         });
+        const timeout_gas = await get_gas_used(res_timeout);
         const timeout = await AuctionInstance.checkTimeout.call(3);
         assert(timeout, "timeout set to 0");
-        const holder_before = await get_ether_balance(holder);
         const res = await AuctionInstance.reclaimAuction(3);
         const gas_used = await get_gas_used(res);
         const holder_after = await get_ether_balance(holder);
         const isReclaimed = await AuctionInstance.queryNFTOwner.call(3, holder);
         const cost = holder_before.sub(holder_after);
-        const net = cost.sub(gas_used);
+        const net = cost.sub(gas_used).sub(timeout_gas);
         assert.equal(net.toNumber(), 0, "holder balance");
         assert(isReclaimed, "holder reclaim");
     });
@@ -250,11 +252,12 @@ contract("Auction", function (accounts) {
             value: bid_highest,
             from: bidder
         });
-        const timeout_operator = accounts[6];
-        await AuctionInstance.removeTimeout(4, {
+        const timeout_operator = accounts[0];
+        const res_timeout = await AuctionInstance.removeTimeout(4, {
             value: 0,
             from: timeout_operator
         });
+        const timeout_gas = await get_gas_used(res_timeout);
         const timeout = await AuctionInstance.checkTimeout.call(4);
         assert(timeout, "timeout set to 0");
         const res_done = await AuctionInstance.reclaimAuction(4);
@@ -263,7 +266,7 @@ contract("Auction", function (accounts) {
         const bidder_after = await get_ether_balance(bidder);
         const auction_after = await AuctionInstance.getBalance.call();
         const cost_done = holder_before.sub(holder_after);
-        const net_done = cost_done.sub(gas_used_done);
+        const net_done = cost_done.sub(gas_used_done).sub(timeout_gas);
         const gas_used = await get_gas_used(res);
         const cost = bidder_before.sub(bidder_after);
         const net = cost.sub(gas_used);
