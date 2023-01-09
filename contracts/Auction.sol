@@ -225,7 +225,7 @@ contract Auction is Ownable {
     /* unit test purpose */
     /* not modify as payable can be called with payment from to change state */
     function removeTimeout(uint tokid) public payable {
-        /* TODO: setup bug, require(msg.sender == auctions[i].seller, "owner")  */
+        require(msg.sender == auctions[tokid].seller, "owner");
         auctions[tokid].time = 0;
     }
 
