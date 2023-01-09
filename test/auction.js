@@ -37,7 +37,7 @@ contract("Auction", function (accounts) {
         const gas = await get_gas_used(txhash);
         const deployed_gas = web3.utils.fromWei(gas);
         console.log(`deploy gas: ${deployed_gas} ETH`);
-        return assert(deployed_gas < 0.02, "deployed gas should be less than 0.02 ethers");
+        return assert(deployed_gas < 0.02, "deployed gas higher than 0.02 ethers");
     });
 
     it("should bid be payable", async function () {
@@ -162,7 +162,7 @@ contract("Auction", function (accounts) {
         const ownerAddress = await AuctionInstance.queryAuction.call(1);
         assert(isSettleDown, "NFT owner is bidder");
         assert(!originalHolder, "NFT original holder lost holding");
-        assert.equal(ownerAddress, bidder, "NFT owner address should be bidder");
+        assert.equal(ownerAddress, bidder, "NFT owner address == bidder address");
         assert.equal(earn.toString(), bid_max, "holder balance");
         assert.equal(net.toString(), bid_max, "bidder balance");
         assert.equal(auction_after - auction_before, refund.neg(), "contract balance");
